@@ -1,4 +1,9 @@
 .idea/*
-
+.vscode/
 *.bin
 *.o
+
+.DS_Store
+
+isodir
+sysroot
