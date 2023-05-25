@@ -4,9 +4,9 @@ PROJECTS="libc kernel"
 export MAKE=${MAKE:-make}
 export HOST=${HOST:-$(./default-host.sh)}
 
-export AR=${HOST}-ar
-export AS=${HOST}-as
-export CC=${HOST}-gcc
+export AR=i686-gnu-ar
+export AS=i686-gnu-ar 
+export CC=i686-linux-gnu-gcc
 
 export PREFIX=/usr
 export EXEC_PREFIX=$PREFIX
