@@ -8,7 +8,7 @@ mkdir -p isodir/boot/grub
 
 cp sysroot/boot/akuma.kernel isodir/boot/akuma.kernel
 cat > isodir/boot/grub/grub.cfg << EOF
-menuentry "akuma" {
+menuentry "akuma kernel" {
 	multiboot /boot/akuma.kernel
 }
 EOF
