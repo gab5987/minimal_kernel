@@ -1,8 +1,10 @@
-#include <stdio.h>
+// #include <kernel/tty.h>
+#include <kernel/vga.h>
 
-#include <kernel/tty.h>
-
-void kernel_main(void) {
+void k_main(void) {
 	terminal_initialize();
-	printf("Hello World!\n");
+    // *((char *) 0xb8000) = VGA_COLOR_WHITE | VGA_COLOR_BLACK << 4;
+    // return;
+	// // printf("Hello World!\n");
+    terminal_writestring("Hello World!\n");
 }

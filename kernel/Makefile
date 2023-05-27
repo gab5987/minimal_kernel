@@ -1,83 +1,35 @@
-DEFAULT_HOST!=../default-host.sh
-HOST?=DEFAULT_HOST
-HOSTARCH!=../target-triplet-to-arch.sh $(HOST)
+AS = nasm
+CC = i386-elf-gcc
+LD = i386-elf-ld
 
-CFLAGS?=-O2 -g
-CPPFLAGS?=
-LDFLAGS?=
-LIBS?=
+C_FLAGS = $(INCLUDE_DIRS) -ffreestanding -m32 -g -c
+AS_FLAGS = -f elf
+AS_B = -f bin
 
-DESTDIR?=
-PREFIX?=/usr/local
-EXEC_PREFIX?=$(PREFIX)
-BOOTDIR?=$(EXEC_PREFIX)/boot
-INCLUDEDIR?=$(PREFIX)/include
+K_OFFSET = 0x1000
 
-CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
-CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -Iinclude
-LDFLAGS:=$(LDFLAGS)
-LIBS:=$(LIBS) -nostdlib -lk -lgcc
+ARCH_DIR = arch/i386
 
-ARCHDIR=arch/i386
+K_OBJECTS = k_entery.o kernel.o tty.o
 
-include arch/i386/make.config
+all: os-image.bin
+	rm -f *.o k*.bin seg*.bin
 
-CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
-CPPFLAGS:=$(CPPFLAGS) $(KERNEL_ARCH_CPPFLAGS)
-LDFLAGS:=$(LDFLAGS) $(KERNEL_ARCH_LDFLAGS)
-LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
+$(K_OBJECTS):
+	@echo "Compiling kernel..."
+	@echo $(INCLUDE_DIRS)
+	$(CC) $(C_FLAGS) kernel/kernel.c -o kernel.o
+	$(CC) $(C_FLAGS) kernel/tty.c -o tty.o
+	$(AS) $(AS_FLAGS) $(ARCH_DIR)/k_entery.asm -o k_entery.o
 
-KERNEL_OBJS=\
-$(KERNEL_ARCH_OBJS) \
-kernel/kernel.o \
+seg000.bin:
+	$(AS) $(AS_B) $(ARCH_DIR)/seg000.asm -o seg000.bin
 
-OBJS=\
-$(ARCHDIR)/crti.o \
-$(ARCHDIR)/crtbegin.o \
-$(KERNEL_OBJS) \
-$(ARCHDIR)/crtend.o \
-$(ARCHDIR)/crtn.o \
+seg001.bin: $(K_OBJECTS)
+	$(LD) -o seg001.bin -Ttext $(K_OFFSET) $(K_OBJECTS) --oformat binary
 
-LINK_LIST=\
-$(LDFLAGS) \
-$(ARCHDIR)/crti.o \
-$(ARCHDIR)/crtbegin.o \
-$(KERNEL_OBJS) \
-$(LIBS) \
-$(ARCHDIR)/crtend.o \
-$(ARCHDIR)/crtn.o \
+seg002.bin:
+	$(AS) $(AS_B) $(ARCH_DIR)/seg002.asm -o seg002.bin
 
-.PHONY: all clean install install-headers install-kernel
-.SUFFIXES: .o .c .S
-
-all: akuma.kernel
-
-akuma.kernel: $(OBJS) $(ARCHDIR)/linker.ld
-	$(CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
-	grub-file --is-x86-multiboot akuma.kernel
-
-$(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
-	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
-
-.c.o:
-	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
-
-.S.o:
-	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
-
-clean:
-	rm -f akuma.kernel
-	rm -f $(OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
-
-install: install-headers install-kernel
-
-install-headers:
-	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	cp -R include/. $(DESTDIR)$(INCLUDEDIR)/.
-
-install-kernel: akuma.kernel
-	mkdir -p $(DESTDIR)$(BOOTDIR)
-	cp akuma.kernel $(DESTDIR)$(BOOTDIR)
-
--include $(OBJS:.o=.d)
+os-image.bin: seg000.bin seg001.bin seg002.bin
+	cat seg000.bin seg001.bin seg002.bin > os-image.bin
